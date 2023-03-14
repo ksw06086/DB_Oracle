@@ -625,5 +625,97 @@ GROUP BY DEPARTMENT_ID, JOB_ID
 ORDER BY 1, 2;
 
 /* 그룹 결과 제한 : HAVING 절
-    
+    HAVING + 그룹함수 조건절
+    -- 형식
+    SELECT 컬럼명1, 컬럼명2, ...
+    FROM 테이블명
+    WHERE 일반컬럼 조건절
+    GROUP BY 컬럼명1, 컬럼명2
+    HAVING 그룹함수 조건절
+    ORDER BY 컬럼명1, ...
 */
+
+-- 부서별 최대 급여, 총 급여(단 총급여가 15000원 이상, 부서코드로 오름차순 정렬)
+-- 부서코드 없으면 스킵
+SELECT DEPARTMENT_ID, MAX(SALARY) 최대급여, SUM(SALARY) 총급여
+FROM EMPLOYEES
+WHERE DEPARTMENT_ID IS NOT NULL
+GROUP BY DEPARTMENT_ID
+HAVING SUM(SALARY) >= 15000
+ORDER BY 1;
+
+-- 직무별 급여평균, 급여 총액 구하기, 급여 평균이 5000이상, 소수점이하는 무조건 절삭
+-- 직무정렬, 'IT' 포함 직무 스킵
+SELECT JOB_ID, FLOOR(AVG(SALARY)) 급여평균, SUM(SALARY) 총급여
+FROM employees
+WHERE JOB_ID NOT LIKE '%IT%'
+GROUP BY JOB_ID
+HAVING AVG(SALARY) >= 5000
+ORDER BY JOB_ID;
+
+-- 부서별 총 인원 수, 총급여, 부서가 50~100만
+SELECT DEPARTMENT_ID, COUNT(*), SUM(SALARY)
+FROM employees
+GROUP BY DEPARTMENT_ID
+HAVING DEPARTMENT_ID BETWEEN 50 AND 100;
+
+---------------JOIN--------------------------------------------------
+SELECT EMP.EMPLOYEE_ID, EMP.DEPARTMENT_ID, DEP.DEPARTMENT_ID
+FROM EMPLOYEES EMP, DEPARTMENTS DEP
+ORDER BY 2;
+
+/*
+    잘못된 조인
+    -- 카다시안 곱 : 조인의 조건(부서번호가 동일)을 생략한 경우 행의 모든 조합을 표시
+    -- 특별한 키워드 없이 SELCT 문의 FROM 절에 사원 테이블과 부서 테이블을 콤마로 연결하여 연속하여 기술
+*/
+SELECT 
+    E.EMPLOYEE_ID, E.LAST_NAME, E.DEPARTMENT_ID, D.DEPARTMENT_ID
+FROM EMPLOYEES E, DEPARTMENTS D
+WHERE E.EMPLOYEE_ID = 100;
+
+/*
+EQUAL JOIN - 조인 대상 테이블에서 공통 칼럼을 '='(EQUAL) 비교를 통해 같은 값을 가지는 행을 연결
+1. 정의 : 가장 많이 사용하는 조인 방법, 조인 대상이 되는 두 테이블에서
+          공통적으로 존재하는 컬럼의 값(키 값)이 일치하는 행을
+          연결하여 검색결과를 생성하는 방법
+          - FROM 절은 조인 대상 테이블을 기술하고, 테이블은 콤마(,)로 구분
+          - WHERE  절에 조인을 위한 컬럼명과 '=' 연산자를 사용하여 조인 조건 기술
+          - 조건에 사용되는 컬럼은 일반적으로 기본키와 외래키에 공통적으로 존재하는 컬럼명을 사용함
+          - 기본키 : 중복되지 않음, NOT NULL
+          - 외래키 : 다른 테이블의 기본키 참조, 반드시 NOT NULL은 아님
+2. 중복컬럼일 경우 컬럼명 앞에 테이블명(또는 ALIS(별칭))을 기술하여 
+    어느 테이블인지 소속을 구분함
+3. 형식
+    SELECT TABLE.COLUMN, TABLE2.COLUMN
+    FROM TABLE, TABLE2
+    WHERE TABLE.COLUMN1 = TABLE2.COLLUMN2
+    AND 조건식;
+
+4. JOIN-ON - 테이블명과 테이블명 사이에 콤마(,) 대신 JOIN을 사용하고
+             공통으로 존재하는 키를 비교하는 WHERE절 대신에 'ON'을 사용한다.
+*/
+
+-- 사원테이블, 부서테이블에서 사번이 100번인 사원의 부서명
+SELECT E.EMPLOYEE_ID, D.DEPARTMENT_NAME
+FROM employees E, DEPARTMENTS D
+WHERE E.DEPARTMENT_ID = D.DEPARTMENT_ID
+AND E.EMPLOYEE_ID = 100;
+
+-- 100번인 사원의 JOBS 정보 출력
+SELECT E.EMPLOYEE_ID, J.*
+FROM EMPLOYEES E JOIN jobs J
+ON E.JOB_ID = J.JOB_ID
+WHERE E.EMPLOYEE_ID = 100;
+
+SELECT E.EMPLOYEE_ID, J.*
+FROM EMPLOYEES E, jobs J
+WHERE E.JOB_ID = J.JOB_ID
+AND E.EMPLOYEE_ID = 100;
+
+-- 부서 아이디가 10번일 경우 위치정보 가져오기
+SELECT
+    D.DEPARTMENT_ID, L.*
+FROM DEPARTMENTS D, locations L
+WHERE D.location_id = L.LOCATION_ID
+AND D.DEPARTMENT_ID = 10;
