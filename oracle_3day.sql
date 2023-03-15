@@ -255,3 +255,4 @@ where (department_id, salary) in (select department_id, salary
                                     from employees
                                     where department_id > 100
                                     or salary > 10000);
+                                    
