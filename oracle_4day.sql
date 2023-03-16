@@ -307,5 +307,114 @@ CREATE TABLE EMP_RE2(
 );
 
 /*   뷰의 개념과 사용하기
-
+    ㅁ 정의 : 쿨리적인 테이블을 근거한 논리적인 가상 테이블 디스크 저장공간이 할당되지 않음.
+             즉, 실질적으로 데이터를 저장하지 않고, 데이터 사전에, 뷰를 정의할 때
+             기술한 쿼리문만 저장되어 있음. 하지만 사용방법은 테이블에서 파생된 객체 
+             테이블과 유사하기 때문에 '가상 테이블'이라 한다.
+             뷰의 정의는 user_views 데이터 사전을 통해 조회 가능하다.
+    
+    ㅁ 동작원리
+    -- 뷰는 데이터를 저장하고 있지 않은 가상 테이블이므로 실체가 없음
+    -- 뷰는 테이블처럼 사용될 수 잇는 이유는 뷰를 정의할 때 create view 명령어 다음의
+       as 절에 기술한 쿼리 문장 자체를 저장하고 있다가 이를 실행하기 때문
+    -- select문의 from절에서 v_emp로 기술하여 정의하면,
+       오라클서버는 user_views에서 v_emp(key)를 찾는다.
+    -- 기술했던 서브쿼리문장이 저장된 text값을 view 즉 v_emp 위치로 가져와서 실행한다.
+    
+    ㅁ 뷰를 사용하는 이유
+    -- 보안과 사용의 편의성 때문
+    -- 자주 사용하는 복잡하고 긴 쿼리문을 뷰로 정의하면, 접근을 단순화 할 수 잇고, 
+       보안에 유리함
+    -- 권한별로 접근이 제한되어서, 동일한 테이블에 접근하는 사람들마다 다른 뷰에 
+       접근하도록 할 수 있다.
+    
+    ㅁ view 생성권한 부여, system 계정에서 실행
+    -- grant create view to scott;
 */
+CREATE VIEW V_EMP_DEPT2
+AS
+-- USER_VIEW의 TEXT 부분
+SELECT E.EMPNO, E.ENAME, E.EMAIL, E.HIRE_DATE, E.DEPTNO, D.DEPTNAME, D.LOC
+FROM EMP2 E, DEPT2 D
+WHERE D.DEPTNO = E.DEPTNO;
+
+SELECT * FROM V_EMP_DEPT2;
+
+-- 데이터 사전에서 뷰 조회
+SELECT 
+    VIEW_NAME, TEXT
+FROM USER_VIEWS;
+
+/*  뷰 제거하기
+[ 형식 ] DROP VIEW (VIEW) [, .. N]
+-- 뷰는 실체가 없는 가상테이블이기 때문에 뷰를 삭제한다는 것은 USER_VIEWS 데이터
+   딕셔너리에 저장되어 있는 뷰의 정의를 삭제하는 것을 의미한다.
+-- 뷰를 정의한 기본테이블의 구조나 데이터에는 영향이 없다.
+*/
+DROP VIEW V_EMP_DEPT2;
+SELECT
+ *
+FROM USER_VIEWS;
+
+/*
+    ㅁ CREATE OR REPLACE VIEW
+    -- 이미 존재하는 뷰에 대해서 그 내용을 새롭게 변경하여 재생성
+    ㅁ WITH READ ONLY : 해당 뷰를 통해서는 SELECT만 가능함
+    -- 이거 없으면 단일 테이블의 경우 데이터 추가/수정/삭제 가능
+    ㅁ WITH CHECK OPTION
+    -- 해당 뷰를 통해서 볼 수 있는 범위 내에서만 UPDATE 또는 INSERT가 가능함
+    -- 즉, 뷰를 생성할 때 조건 제시에 사용된 컬럼값이 아닌 값을 변경 못하도록 하는 기능 제공
+    -- 즉, 조건 제시된 값만 INSERT, UPDATE 가능
+    
+    * 중요!!! WITH READ ONLY를 하지 않고 VIEW를 만든 상태에서 DML 용어를 사용하면
+      VIEW만이 아닌 테이블에도 영향이 감  
+*/
+-- ㅁ WITH READ ONLY
+CREATE OR REPLACE VIEW V_EMP_READONLY
+AS
+SELECT EMPNO, ENAME, EMAIL, HIRE_DATE, DEPTNO
+FROM EMP2
+WITH READ ONLY;
+
+-- ERROR : cannot perform a DML operation on a read-only view
+INSERT INTO V_EMP_READONLY(EMPNO, ENAME, EMAIL, HIRE_DATE, DEPTNO)
+VALUES(2001, '보아', 'BOA@NAVER.COM', SYSDATE, 105);
+
+-- ㅁ WITH CHECK OPTION
+CREATE OR REPLACE VIEW V_EMP_OPTION
+AS
+SELECT EMPNO, ENAME, EMAIL, HIRE_DATE, DEPTNO
+FROM EMP2
+WHERE EMPNO IN(3001,3002)   -- INSERT, UPDATE 허용범위
+WITH CHECK OPTION;
+
+INSERT INTO V_EMP_OPTION(EMPNO, ENAME, EMAIL, HIRE_DATE, DEPTNO)
+VALUES(3001, '이순신', 'LEE@NAVER.COM', SYSDATE, 105); -- INSERT
+
+INSERT INTO V_EMP_OPTION(EMPNO, ENAME, EMAIL, HIRE_DATE, DEPTNO)
+VALUES(3002, '이지민', 'JMLEE@NAVER.COM', SYSDATE, 105); -- INSERT
+
+INSERT INTO V_EMP_OPTION(EMPNO, ENAME, EMAIL, HIRE_DATE, DEPTNO)
+VALUES(3003, '김민지', 'KIM@NAVER.COM', SYSDATE, 105); -- ERROR
+
+COMMIT;
+
+UPDATE V_EMP_OPTION
+SET EMAIL = 'LEE@GMAIL.COM'
+WHERE EMPNO = 3001;
+
+UPDATE V_EMP_OPTION
+SET EMAIL = 'JMLEE@GMAIL.COM'
+WHERE EMPNO = 3002;
+
+UPDATE V_EMP_OPTION
+SET EMAIL = 'KIM@GMAIL.COM'
+WHERE EMPNO = 3003;
+
+SELECT
+    *
+FROM V_EMP_READONLY;    -- 입력과 수정 모두 성공인 경우에만
+
+-- 실제 테이블, VIEW 테이블 모두 업데이트 되었고 INSERT 되었음(중요!)
+SELECT * FROM EMP2;
+
