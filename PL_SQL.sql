@@ -94,14 +94,127 @@ END;
 /*  ㅁ 커서 : CURSOR, OPEN, FETCH, CLOSE 4단계 명령에 의해 사용됨
     -- SELECT문의 수행 결과가 여러 개의 로우로 구해지는 경우 모든 로우에 대한 
        처리를 하려면 커서를 사용해야 함
+    -- FETCH 문 : 결과 셋에서 로우 단위로 데이터를 읽어들임.
+    -- 현재 행에 대한 정보를 얻어 INTO 뒤에 기술한 변수에 저장한 후 다음 행으로 이동함, 
+    -- 얻어진 여러개의 로우에 대한 결과 값을 모두 처리하려면 반복문에 FETCH문을 기술해야 함
+    CURSOR : 행에 대한 정보를 가짐
+    FETCH  : 꺼내서 INTO 뒤에 변수에게 넣어줌
+[ 형식 ]
+DECLARE
+    CURSOR cursor_name
+IS statement(SELECT절);
+BEGIN
+OPEN cursor_name;
+    FETCH cursor_name
+        INTO variable_name;
+CLOSE cursor_name;
+END;
+*/
+SET SERVEROUTPUT ON
+DECLARE
+    V_DEPT DEPARTMENTS%ROWTYPE;
+    CURSOR C1
+    IS SELECT * FROM DEPARTMENTS;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('부서번호 부서명 매니저 지역명');
+    DBMS_OUTPUT.PUT_LINE('-------------------------');
     
-    
+    OPEN C1;
+    LOOP
+        FETCH C1 INTO V_DEPT.DEPARTMENT_ID, V_DEPT.DEPARTMENT_NAME,
+                      V_DEPT.MANAGER_ID,    V_DEPT.LOCATION_ID;
+        EXIT WHEN C1%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE(V_DEPT.DEPARTMENT_ID || ' ' || V_DEPT.DEPARTMENT_NAME
+                                || ' ' || V_DEPT.MANAGER_ID || ' ' || V_DEPT.LOCATION_ID);
+    END LOOP;
+    CLOSE C1;
+END;
+/
 
+/*  ㅁ 저장 프로시저
+    -- 프로시저 : PL/SQL은 프로그램 로직을 프로시저로 구현하여 객체 형태로 사용한다.
+                 프로시저는 일반프로그래밍 언어에서 상요한느 함수와 비슷한 개념으로,
+                 작업순서가 정해진 독립된 프로그램의 수행단위를 말한다.
+                 프로시저는 정의된 다음, 오라클에 저장되므로 저장프로시저라고도 함
+    
+    -- CallableStatement : DB에 생성된 저장프로시저를 EXECUTE()로 호출해서 사용
+    -- 오라클에서 함수는 반드시 RETURN문을 사용하여 결과를 반환하지만,
+       프로시저는 결과를 반환할수도, 반환하지 않을 수도 있다.
+       
+    -- PL/SQL 블록 구조는 선언부, 실행부, 예외처리부
+    -- 생성 : 
+       CREATE OR REPLACE PROCEDURE 프로시저명(매개변수1 DATE_TYPE, 매개변수2 DATA_TYPE, ...)
+       IS
+            로컬변수;
+       BEGIN
+            수행문1;
+            수행문2;
+       END;
+       /
+    -- 실행 : EXECUTE 프로시저명;
+    -- 삭제 : DROP PROCEDURE 프로시저명;
+    -- 프로시저 확인 데이터 사전 : USER_SOURCE
 */
 
+-- 프로시저 생성하기
+-- SET~/까지 실행후 EXECUTE
+SET SERVEROUTPUT ON
+CREATE OR REPLACE PROCEDURE EMP_SALARY
+IS
+    V_SALARY EMPLOYEES.SALARY%TYPE;
+BEGIN
+    SELECT SALARY INTO V_SALARY
+    FROM EMPLOYEES
+    WHERE LAST_NAME = 'Chen';
+    DBMS_OUTPUT.put_line('CHEN의 급여는 ' || V_SALARY || '입니다.');
+END;
+/
 
+EXECUTE EMP_SALARY;
 
+-- 프로시저 확인
+SELECT NAME, TEXT
+FROM USER_SOURCE
+WHERE NAME LIKE '%EMP_SALARY%';
 
+-- IN 매개변수 사용하기
+SET SERVEROUTPUT ON
+CREATE OR REPLACE PROCEDURE SP_SALARY_ENAME(
+    V_LASTNAME IN EMPLOYEES.LAST_NAME%TYPE
+)
+IS
+    V_SALARY    EMPLOYEES.SALARY%TYPE;
+BEGIN
+    SELECT SALARY INTO V_SALARY
+    FROM EMPLOYEES
+    WHERE LAST_NAME = V_LASTNAME;
+    
+    DBMS_OUTPUT.PUT_LINE(V_LASTNAME || '의 급여는 ' || V_SALARY || '원입니다.');
+END;
+/
 
+EXECUTE SP_SALARY_ENAME('Chen');
+EXECUTE SP_SALARY_ENAME('Seo');
 
+/*
+    [MODE]는 IN과 OUT, INOUT 세 가지를 기술할 수 있는데
+    IN 데이터를 전달받을 때 쓰고 OUT은 수행된 결과를 받아갈 때 사용합니다.
+    INOUT은 두가지 목적에 모두 사용됩니다.
+*/
 
+-- OUT 매개변수 사용
+CREATE OR REPLACE PROCEDURE SP_SALARY_ENAME2(
+    V_LASTNAME IN EMPLOYEES.LAST_NAME%TYPE,
+    V_SALARY  OUT EMPLOYEES.SALARY%TYPE
+)
+IS
+BEGIN
+    SELECT SALARY INTO V_SALARY
+    FROM EMPLOYEES
+    WHERE LAST_NAME = V_LASTNAME;
+END;
+/
+
+VARIABLE V_SALARY VARCHAR2(14);     -- 위에처럼 %타입은 못함
+EXECUTE SP_SALARY_ENAME2('Chen', :V_SALARY);
+PRINT V_SALARY;
